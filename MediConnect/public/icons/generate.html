@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediConnect Icon Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #3b82f6; }
+    p { margin-bottom: 1rem; color: #94a3b8; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .btn { background: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 1rem; margin: 0.5rem; }
+    .btn:hover { background: #2563eb; }
+    .btn:disabled { background: #475569; cursor: not-allowed; }
+    .status { margin-top: 1rem; padding: 1rem; background: #1e293b; border-radius: 8px; }
+    .status p { margin: 0.25rem 0; font-size: 0.875rem; }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    #preview { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; }
+    .preview-item { text-align: center; }
+    .preview-item canvas { border: 1px solid #334155; border-radius: 4px; }
+    .preview-item span { display: block; font-size: 0.75rem; margin-top: 0.25rem; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MediConnect Icon Generator</h1>
+    <p>Generates PNG icons for PWA manifest from SVG sources.</p>
+    
+    <div>
+      <button class="btn" onclick="generateAll()">Generate All Icons</button>
+      <button class="btn" onclick="generateSingle('main')" style="background:#8b5cf6">Main Only</button>
+      <button class="btn" onclick="generateSingle('maskable')" style="background:#8b5cf6">Maskable Only</button>
+    </div>
+    
+    <div class="status" id="status">
+      <p>Click "Generate All Icons" to start.</p>
+    </div>
+    
+    <div id="preview"></div>
+  </div>
+
+  <script>
+    const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
+    
+    const SVG_MAIN = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6"/>
+          <stop offset="100%" stop-color="#8b5cf6"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+      <path d="M256 80 L256 192 L144 192 L144 224 L256 224 L256 272 L144 272 L144 304 L256 304 L256 416 L288 416 L288 304 L400 304 L400 272 L288 272 L288 224 L400 224 L400 192 L288 192 L288 80 Z" fill="white" opacity="0.95"/>
+    </svg>`;
+    
+    const SVG_MASKABLE = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6"/>
+          <stop offset="100%" stop-color="#8b5cf6"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" fill="url(#bg)"/>
+      <path d="M256 80 L256 192 L144 192 L144 224 L256 224 L256 272 L144 272 L144 304 L256 304 L256 416 L288 416 L288 304 L400 304 L400 272 L288 272 L288 224 L400 224 L400 192 L288 192 L288 80 Z" fill="white" opacity="0.95"/>
+    </svg>`;
+    
+    function log(msg, isError = false) {
+      const status = document.getElementById('status');
+      const p = document.createElement('p');
+      p.textContent = msg;
+      p.className = isError ? 'error' : 'success';
+      status.appendChild(p);
+    }
+    
+    function svgToImage(svgString) {
+      return new Promise((resolve, reject) => {
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+    
+    function renderIcon(img, size, rounded = true) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      if (rounded) {
+        const radius = size * 0.16;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, size, size, radius);
+        ctx.clip();
+      }
+      
+      ctx.drawImage(img, 0, 0, size, size);
+      return canvas;
+    }
+    
+    function downloadCanvas(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    async function generateAll() {
+      document.getElementById('status').innerHTML = '<p>Generating icons...</p>';
+      
+      try {
+        const mainImg = await svgToImage(SVG_MAIN);
+        const maskableImg = await svgToImage(SVG_MASKABLE);
+        
+        for (const size of SIZES) {
+          const canvas = renderIcon(mainImg, size, true);
+          downloadCanvas(canvas, `icon-${size}x${size}.png`);
+          log(`Generated icon-${size}x${size}.png`);
+          await new Promise(r => setTimeout(r, 100));
+        }
+        
+        const maskableCanvas = renderIcon(maskableImg, 512, false);
+        downloadCanvas(maskableCanvas, 'icon-maskable-512x512.png');
+        log('Generated icon-maskable-512x512.png');
+        
+        log('All icons generated successfully!');
+      } catch (err) {
+        log(`Error: ${err.message}`, true);
+      }
+    }
+    
+    async function generateSingle(type) {
+      document.getElementById('status').innerHTML = '<p>Generating...</p>';
+      
+      try {
+        const svgString = type === 'main' ? SVG_MAIN : SVG_MASKABLE;
+        const img = await svgToImage(svgString);
+        
+        if (type === 'main') {
+          for (const size of SIZES) {
+            const canvas = renderIcon(img, size, true);
+            downloadCanvas(canvas, `icon-${size}x${size}.png`);
+            log(`Generated icon-${size}x${size}.png`);
+            await new Promise(r => setTimeout(r, 100));
+          }
+        } else {
+          const canvas = renderIcon(img, 512, false);
+          downloadCanvas(canvas, 'icon-maskable-512x512.png');
+          log('Generated icon-maskable-512x512.png');
+        }
+        
+        log('Done!');
+      } catch (err) {
+        log(`Error: ${err.message}`, true);
+      }
+    }
+  </script>
+</body>
+</html>
