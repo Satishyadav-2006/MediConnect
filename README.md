@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./MediConnect_Logo.png" alt="MediConnect Logo" width="420">
+  <img src="https://raw.githubusercontent.com/Satishyadav-2006/MediConnect/main/MediConnect/MediConnect_Logo.png" alt="MediConnect Logo" width="420">
 </p>
 
 <h1 align="center">MediConnect</h1>
